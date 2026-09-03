@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Nick Prefix Remover icon</title>
+  <desc id="desc">A dark fantasy chat bubble with a crossed-out nickname prefix and NPR monogram.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#171c2b"/>
+      <stop offset="1" stop-color="#06080e"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff3a0"/>
+      <stop offset="0.38" stop-color="#d9a62d"/>
+      <stop offset="0.7" stop-color="#80520d"/>
+      <stop offset="1" stop-color="#f7d65a"/>
+    </linearGradient>
+    <linearGradient id="bubble" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#273653"/>
+      <stop offset="1" stop-color="#10192b"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dy="8"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.8"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="62" fill="#030508"/>
+  <rect x="14" y="14" width="484" height="484" rx="49" fill="url(#bg)" stroke="url(#gold)" stroke-width="12"/>
+  <rect x="30" y="30" width="452" height="452" rx="37" fill="none" stroke="#47310d" stroke-width="3"/>
+
+  <g filter="url(#shadow)">
+    <path d="M92 123c0-26 21-47 47-47h234c26 0 47 21 47 47v177c0 26-21 47-47 47H255l-65 67c-13 13-35 4-35-14v-53h-16c-26 0-47-21-47-47z" fill="url(#bubble)" stroke="url(#gold)" stroke-width="11" stroke-linejoin="round"/>
+    <path d="M116 137c0-17 14-31 31-31h218c17 0 31 14 31 31" fill="none" stroke="#657ba5" stroke-width="4" opacity=".55" stroke-linecap="round"/>
+  </g>
+
+  <text x="256" y="239" text-anchor="middle" fill="#f9de73" font-family="Georgia, serif" font-size="53" font-weight="bold" letter-spacing="-2">(Nickname)</text>
+  <path d="M148 287L364 142" stroke="#9b2027" stroke-width="28" stroke-linecap="round"/>
+  <path d="M148 287L364 142" stroke="#e65252" stroke-width="9" stroke-linecap="round"/>
+
+  <path d="M136 378h240" stroke="#745216" stroke-width="3"/>
+  <text x="256" y="438" text-anchor="middle" fill="#f9de73" stroke="#3e2806" stroke-width="2" paint-order="stroke" font-family="Georgia, serif" font-size="64" font-weight="bold" letter-spacing="7">NPR</text>
+</svg>
