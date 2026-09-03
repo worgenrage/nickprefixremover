@@ -1,2 +1,2 @@
 DEV.md export-ignore
-assets/ export-ignore
+assets/** export-ignore
