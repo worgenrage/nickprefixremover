@@ -98,3 +98,7 @@ The prefix behaviour is designed for messages produced by addons such as [Name2C
 ## License
 
 This project is proprietary software. See [LICENSE.md](LICENSE.md) for the permitted use and restrictions.
+
+## Support
+
+If you enjoy this addon, you can support its development with a small [€2 PayPal donation](https://www.paypal.com/paypalme/worgenrage/2EUR). Thank you!
