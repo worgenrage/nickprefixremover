@@ -1,0 +1,230 @@
+local _, addon = ...
+local ADDON = addon and addon.API
+local PANEL_NAME = "Nick Prefix Remover"
+
+if not ADDON then
+    return
+end
+
+local allControls = {}
+
+local function CreateLabel(parent, text, x, y, font)
+    local label = parent:CreateFontString(nil, "ARTWORK", font or "GameFontNormal")
+    label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+    label:SetText(text)
+    return label
+end
+
+local function CreateValue(parent, text, x, y, width, font)
+    local value = parent:CreateFontString(nil, "ARTWORK", font or "GameFontHighlight")
+    value:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+    value:SetWidth(width)
+    value:SetJustifyH("LEFT")
+    value:SetText(text or "")
+    return value
+end
+
+local function CreateButton(parent, text, width, height, onClick)
+    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    button:SetSize(width, height)
+    button:SetText(text)
+    button:SetScript("OnClick", onClick)
+    return button
+end
+
+local function RefreshAll()
+    local db = ADDON.GetDB()
+    for _, control in ipairs(allControls) do
+        control:SetChecked(db[control.settingKey] == true)
+    end
+end
+
+local function MakeCheck(parent, key, label, y)
+    -- No global frame name: the same controls are created for the Settings
+    -- category and for the standalone dialog.
+    local check = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate")
+    check.settingKey = key
+    check:SetPoint("TOPLEFT", 16, y)
+    check.Text:SetText(label)
+    check.Text:SetFontObject(GameFontHighlight)
+    check:SetScript("OnClick", function(self)
+        ADDON.GetDB()[key] = self:GetChecked() == true
+        ADDON.ApplyFilters()
+        RefreshAll()
+    end)
+    allControls[#allControls + 1] = check
+end
+
+local function BuildTabbedContent(parent, tabY, pageY, contentWidth)
+    contentWidth = contentWidth or 560
+    local pages = {}
+    local tabs = {}
+
+    local function CreatePage()
+        local page = CreateFrame("Frame", nil, parent)
+        page:SetPoint("TOPLEFT", 0, pageY)
+        page:SetPoint("BOTTOMRIGHT", 0, 0)
+        return page
+    end
+
+    pages.options = CreatePage()
+    pages.readme = CreatePage()
+
+    local function ShowPage(name)
+        for pageName, page in pairs(pages) do
+            page:SetShown(pageName == name)
+        end
+
+        for tabName, tab in pairs(tabs) do
+            local selected = tabName == name
+            tab:SetEnabled(not selected)
+
+            local text = tab:GetFontString()
+            if text then
+                if selected then
+                    text:SetTextColor(1.0, 0.82, 0.0)
+                else
+                    text:SetTextColor(1.0, 1.0, 1.0)
+                end
+            end
+        end
+    end
+
+    -- Compact Blizzard panel buttons work better here than CharacterFrame-style
+    -- tabs and still provide a familiar Classic configuration UI.
+    local optionsTab = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    optionsTab:SetText("Options")
+    optionsTab:SetSize(112, 22)
+    optionsTab:SetPoint("TOPLEFT", parent, "TOPLEFT", 16, tabY)
+    optionsTab:SetScript("OnClick", function()
+        ShowPage("options")
+    end)
+    tabs.options = optionsTab
+
+    local readmeTab = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    readmeTab:SetText("README")
+    readmeTab:SetSize(112, 22)
+    readmeTab:SetPoint("LEFT", optionsTab, "RIGHT", 6, 0)
+    readmeTab:SetScript("OnClick", function()
+        ShowPage("readme")
+    end)
+    tabs.readme = readmeTab
+
+    MakeCheck(pages.options, "enabled", "Enable nickname-prefix removal", -8)
+
+    CreateLabel(pages.options, "Chat channels to filter", 16, -50)
+
+    MakeCheck(pages.options, "guild", "Guild", -78)
+    MakeCheck(pages.options, "officer", "Officer", -108)
+    MakeCheck(pages.options, "party", "Party", -138)
+    MakeCheck(pages.options, "raid", "Raid", -168)
+    MakeCheck(pages.options, "instance", "Instance / Battleground", -198)
+    MakeCheck(pages.options, "channel", "Custom channels (CHAT_MSG_CHANNEL)", -228)
+    MakeCheck(pages.options, "say", "Say", -258)
+    MakeCheck(pages.options, "yell", "Yell", -288)
+    MakeCheck(pages.options, "whisper", "Whisper", -318)
+    MakeCheck(pages.options, "bnwhisper", "Battle.net Whisper", -348)
+    MakeCheck(pages.options, "communities", "Community channel", -378)
+
+    CreateValue(
+        pages.options,
+        "Changes apply immediately. Open the README tab for recognised formats and limitations.",
+        16,
+        -414,
+        contentWidth
+    )
+
+    CreateLabel(pages.readme, "How it works", 16, -8)
+
+    local readme = CreateValue(pages.readme, nil, 16, -38, contentWidth)
+    readme:SetJustifyV("TOP")
+    readme:SetText([[Nick Prefix Remover hides nickname labels that other addons add at the start of incoming chat messages. It is intended for messages generated by addons such as Name2Chat and Incognito.
+
+Recognised examples:
+  (krix): Hello!
+  ( krix ): Hello!
+  [krix]: Hello!
+  {krix}: Hello!
+  <krix>: Hello!
+
+Whitespace around a nickname and its colon is accepted, so forms such as "( krix ) : Hello!" are also removed.
+
+Important: the addon recognises a bracketed label followed by a colon at the very start of a message. This can occasionally match an ordinary player message too. For example, "(something): I agree" may be treated as a nickname prefix and become "I agree". If this is a concern, disable filtering for the affected chat channel.]])
+
+    ShowPage("options")
+end
+
+-- Keep a compact, correctly spaced copy in Blizzard's Options > AddOns list.
+local settingsPanel = CreateFrame("Frame", "NickPrefixRemoverOptionsPanel")
+settingsPanel.name = PANEL_NAME
+
+local settingsTitle = settingsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+settingsTitle:SetPoint("TOPLEFT", 16, -16)
+settingsTitle:SetText(PANEL_NAME)
+
+local settingsSubtitle = settingsPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+settingsSubtitle:SetPoint("TOPLEFT", settingsTitle, "BOTTOMLEFT", 0, -8)
+settingsSubtitle:SetText("Remove nickname prefixes from incoming chat messages.")
+
+BuildTabbedContent(settingsPanel, -76, -106, 560)
+settingsPanel:SetScript("OnShow", RefreshAll)
+settingsPanel.OnRefresh = RefreshAll
+
+local category
+if Settings and Settings.RegisterCanvasLayoutCategory then
+    category = Settings.RegisterCanvasLayoutCategory(settingsPanel, PANEL_NAME)
+    Settings.RegisterAddOnCategory(category)
+elseif InterfaceOptions_AddCategory then
+    InterfaceOptions_AddCategory(settingsPanel)
+end
+
+-- /npr config opens this independent dialog rather than Blizzard's Options UI.
+local dialog = CreateFrame("Frame", "NickPrefixRemoverDialog", UIParent, "BasicFrameTemplateWithInset")
+dialog:SetSize(480, 545)
+dialog:SetPoint("CENTER")
+dialog:SetFrameStrata("DIALOG")
+dialog:SetToplevel(true)
+dialog:SetMovable(true)
+dialog:SetClampedToScreen(true)
+dialog:EnableMouse(true)
+dialog:RegisterForDrag("LeftButton")
+dialog:SetScript("OnDragStart", dialog.StartMoving)
+dialog:SetScript("OnDragStop", dialog.StopMovingOrSizing)
+dialog:SetScript("OnShow", RefreshAll)
+
+if dialog.TitleText then
+    dialog.TitleText:SetText(PANEL_NAME)
+end
+
+-- BasicFrameTemplateWithInset supplies a standard Blizzard content region.
+-- Keeping the controls inside it gives the dialog a denser, conventional
+-- addon-options layout instead of leaving a large empty frame area.
+local dialogContent = dialog.Inset or dialog
+-- The inset begins directly below the title bar on Classic. Leave a clear
+-- title area before placing tabs so they cannot overlap the window caption.
+BuildTabbedContent(dialogContent, -38, -68, 410)
+
+-- A standard Blizzard-style footer gives the standalone window a clear end
+-- point and provides the expected Close action in addition to the title-bar X.
+local footer = CreateFrame("Frame", nil, dialog)
+footer:SetPoint("BOTTOMLEFT", dialog, "BOTTOMLEFT", 10, 8)
+footer:SetPoint("BOTTOMRIGHT", dialog, "BOTTOMRIGHT", -10, 8)
+footer:SetHeight(30)
+
+local footerLine = footer:CreateTexture(nil, "ARTWORK")
+footerLine:SetPoint("TOPLEFT", 0, 0)
+footerLine:SetPoint("TOPRIGHT", 0, 0)
+footerLine:SetHeight(1)
+footerLine:SetColorTexture(0.55, 0.45, 0.20, 0.75)
+
+local closeButton = CreateButton(footer, CLOSE, 110, 22, function()
+    dialog:Hide()
+end)
+closeButton:SetPoint("BOTTOMRIGHT", -4, 0)
+
+dialog:Hide()
+
+function ADDON.OpenOptions()
+    dialog:Show()
+    dialog:Raise()
+end
