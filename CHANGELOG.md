@@ -2,6 +2,23 @@
 
 All notable changes to Nick Prefix Remover are documented in this file.
 
+## 1.0.2 - 2026-09-05
+
+### Added
+
+- New **Use optimized prefix detection** option in the configuration window.
+- Optimized prefix detection is enabled by default for new and existing settings.
+
+### Changed
+
+- Added a lightweight prefix pre-check before full nickname matching.
+  The addon first checks whether an incoming message begins, after optional whitespace,
+  with one of the supported opening characters: `(`, `[`, `{`, or `<`.
+- Messages that do not begin with one of these characters skip the full prefix-pattern
+  checks, reducing unnecessary processing for ordinary chat messages.
+- Disabling **Use optimized prefix detection** restores the previous matching path.
+  Recognised nickname-prefix formats and displayed chat output remain unchanged.
+
 ## 1.0.1 - 2026-09-03
 
 ### Added

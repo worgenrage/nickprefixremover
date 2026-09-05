@@ -7,6 +7,7 @@ local API = addon.API
 
 local defaults = {
     enabled = true,
+    fastPrefixPrecheck = true,
     guild = true,
     officer = false,
     party = false,
@@ -39,8 +40,6 @@ for setting, event in pairs(events) do
     eventSettings[event] = setting
 end
 
--- Keep these patterns outside the chat filter. The filter runs for every
--- displayed message, so it should not allocate a new table each time.
 local nicknamePatterns = {
     "^%s*%((.-)%)%s*:%s*(.*)$",
     "^%s*%[(.-)%]%s*:%s*(.*)$",
@@ -48,13 +47,17 @@ local nicknamePatterns = {
     "^%s*<(.-)>%s*:%s*(.*)$",
 }
 
+local nicknamePatternsByOpeningCharacter = {
+    ["("] = nicknamePatterns[1],
+    ["["] = nicknamePatterns[2],
+    ["{"] = nicknamePatterns[3],
+    ["<"] = nicknamePatterns[4],
+}
+
 local registered = {}
 
 local function CopyDefaults(dst)
     for k, v in pairs(defaults) do
-        -- SavedVariables can survive addon upgrades and manual edits. Restore
-        -- an invalid value as well as a missing one, so boolean settings never
-        -- become truthy strings or incompatible values.
         if type(dst[k]) ~= type(v) then
             dst[k] = v
         end
@@ -70,33 +73,38 @@ local function GetDB()
     return NickPrefixRemoverDB
 end
 
--- Recognises the formats used by common nickname-prefix addons:
---   (Nickname): message
---   [Nickname]: message
---   {Nickname}: message
---   <Nickname>: message
---
--- The match is intentionally anchored at the beginning. We do not touch
--- bracketed text appearing later in a normal message.
-local function StripNicknamePrefix(msg)
+local function MatchNicknamePrefix(msg, pattern)
+    local nickname, rest = msg:match(pattern)
+    if nickname then
+        nickname = nickname:match("^%s*(.-)%s*$")
+        if nickname ~= "" then
+            return rest, true
+        end
+    end
+
+    return msg, false
+end
+
+local function StripNicknamePrefix(msg, useFastPrecheck)
     if type(msg) ~= "string" or msg == "" then
         return msg, false
     end
 
-    -- Name2Chat and Incognito-style addons prepend the nickname to the
-    -- message, for example: "(krix): hello".  Be liberal about whitespace
-    -- inside and around the brackets: "( krix ) : hello" is also valid.
-    -- The leading whitespace is intentional; it covers chat implementations
-    -- that insert one before the addon prefix without matching later text.
+    if useFastPrecheck then
+        local openingCharacter = msg:match("^%s*(.)")
+        local pattern = nicknamePatternsByOpeningCharacter[openingCharacter]
+
+        if not pattern then
+            return msg, false
+        end
+
+        return MatchNicknamePrefix(msg, pattern)
+    end
+
     for _, pattern in ipairs(nicknamePatterns) do
-        local nickname, rest = msg:match(pattern)
-        if nickname then
-            -- Do not remove an empty bracket pair or a prefix containing only
-            -- whitespace; those are ordinary user messages, not nicknames.
-            nickname = nickname:match("^%s*(.-)%s*$")
-            if nickname ~= "" then
-                return rest, true
-            end
+        local newMsg, changed = MatchNicknamePrefix(msg, pattern)
+        if changed then
+            return newMsg, true
         end
     end
 
@@ -104,29 +112,23 @@ local function StripNicknamePrefix(msg)
 end
 
 local function ChatFilter(self, event, msg, author, ...)
-    -- Filters are added only after GetDB() has initialised this table.
-    -- Reading it directly avoids copying defaults for every chat line.
     local db = NickPrefixRemoverDB
     if not db or not db.enabled then
         return
     end
 
     local key = eventSettings[event]
-
     if not key or not db[key] then
         return
     end
 
-    local newMsg, changed = StripNicknamePrefix(msg)
+    local newMsg, changed = StripNicknamePrefix(msg, db.fastPrefixPrecheck)
     if changed then
         return false, newMsg, author, ...
     end
 end
 
 local function ApplyFilters()
-    -- Keep registration order stable when users toggle a channel. Other chat
-    -- addons can also use message filters, and removing/re-adding ours would
-    -- otherwise move it to a different position in their filter chain.
     for _, event in pairs(events) do
         if not registered[event] then
             ChatFrame_AddMessageEventFilter(event, ChatFilter)
@@ -135,8 +137,6 @@ local function ApplyFilters()
     end
 end
 
--- Internal addon API shared through the private table passed to each file by
--- the TOC loader. This avoids publishing implementation details in _G.
 API.GetDB = GetDB
 API.ApplyFilters = ApplyFilters
 
@@ -152,12 +152,14 @@ end
 local function ShowStatus()
     local db = GetDB()
     Print("Enabled: " .. (db.enabled and "|cff00ff00ON|r" or "|cffff0000OFF|r"))
+
     local enabled = {}
-    for key, event in pairs(events) do
+    for key in pairs(events) do
         if db[key] then
             enabled[#enabled + 1] = key
         end
     end
+
     table.sort(enabled)
     Print("Channels: " .. (#enabled > 0 and table.concat(enabled, ", ") or "none"))
 end
@@ -169,6 +171,7 @@ end
 
 SLASH_NICKPREFIXREMOVER1 = "/npr"
 SLASH_NICKPREFIXREMOVER2 = "/nickprefix"
+
 SlashCmdList.NICKPREFIXREMOVER = function(msg)
     msg = (msg or ""):lower():match("^%s*(.-)%s*$")
 
@@ -222,8 +225,9 @@ end
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
-frame:SetScript("OnEvent", function(self, event, addon)
-    if addon ~= ADDON_NAME then
+
+frame:SetScript("OnEvent", function(self, event, loadedAddon)
+    if loadedAddon ~= ADDON_NAME then
         return
     end
 
