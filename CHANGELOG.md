@@ -2,6 +2,14 @@
 
 All notable changes to Nick Prefix Remover are documented in this file.
 
+## 1.1.1 - 2026-11-06
+
+### Changed
+
+- Release archives contain only the addon files. The GitHub source archives no longer include
+  repository metadata (`.gitattributes`, `.github/`) or an empty `assets/` folder.
+- No functional changes since 1.1.0.
+
 ## 1.1.0 - 2026-11-06
 
 ### Added
