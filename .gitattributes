@@ -1,2 +1,5 @@
+.gitattributes export-ignore
+.github export-ignore
 DEV.md export-ignore
+assets export-ignore
 assets/** export-ignore
