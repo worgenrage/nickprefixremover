@@ -2,8 +2,9 @@
 
 ## Target runtime
 
-- World of Warcraft Classic Era (`11509`)
-- The Burning Crusade Classic (`20506`)
+- World of Warcraft Classic Era (`11508`, `11509`)
+- The Burning Crusade Classic Anniversary (`20506`)
+- World of Warcraft: Forever (`16001`)
 - Blizzard's WoW Lua 5.1 sandbox
 
 Use Lua 5.1-compatible syntax and WoW APIs only. Do not use normal Lua module loading (`require`), `goto`, `_ENV`, `table.pack`, `table.unpack`, or Lua features introduced after Lua 5.1.
@@ -22,7 +23,7 @@ The `.toc` file controls Lua file load order. `NickPrefixRemover.lua` must load 
 
 ## Chat-filter rules
 
-- Use `ChatFrame_AddMessageEventFilter` for incoming message changes.
+- Register incoming message filters with `ChatFrameUtil.AddMessageEventFilter`, falling back to `ChatFrame_AddMessageEventFilter` (Classic Era 1.15.8 has a `ChatFrameUtil` table without this function).
 - A filter must return `false, newMessage, author, ...` when changing a message so the remaining event arguments are preserved.
 - Keep the filter free of side effects: WoW can run it once for every relevant chat frame.
 - Do not remove and re-add filters when a user toggles a channel; that can change its position relative to filters installed by other chat addons.

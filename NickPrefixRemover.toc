@@ -1,10 +1,12 @@
-## Interface: 11509, 20506
+## Interface: 11508, 11509, 20506, 16001
 ## Title: Nick Prefix Remover
 ## Notes: Hides nickname prefixes added to chat messages by other addons.
 ## Author: Christian Hamar
-## Version: 1.0.2
+## Version: 1.1.0
 ## SavedVariables: NickPrefixRemoverDB
 ## LoadSavedVariablesFirst: 1
+## IconTexture: Interface\AddOns\NickPrefixRemover\NickPrefixRemover-Icon
+## AddonCompartmentFunc: NickPrefixRemover_OnAddonCompartmentClick
 
 NickPrefixRemover.lua
 NickPrefixRemoverOptions.lua

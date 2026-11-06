@@ -40,7 +40,8 @@ local function RefreshAll()
 end
 
 local function MakeCheck(parent, key, label, y)
-    local check = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate")
+    local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    check:SetSize(26, 26)
     check.settingKey = key
     check:SetPoint("TOPLEFT", 16, y)
     check.Text:SetText(label)
@@ -142,12 +143,14 @@ local function BuildTabbedContent(parent, tabY, pageY, contentWidth)
 
 Recognised examples:
   (krix): Hello!
-  ( krix ): Hello!
+  (Krix Valami): Hello!
   [krix]: Hello!
   {krix}: Hello!
   <krix>: Hello!
 
-Whitespace around a nickname and its colon is accepted, so forms such as "( krix ) : Hello!" are also removed.
+Whitespace around a nickname is accepted, so forms such as "( krix ) : Hello!" are also removed. A space must follow the colon.
+
+Not treated as nicknames: raid target markers such as "{star}:" or "(skull):", numbers such as "(1):", trade tags such as "[WTS]:", links, and labels longer than 50 bytes. Messages from party, raid and instance leaders are filtered too.
 
 Optimized prefix detection is enabled by default. It skips full pattern matching when a message does not begin (after whitespace) with (, [, {, or <. Disabling it restores the legacy matching path; recognised formats stay the same.
 
@@ -171,12 +174,10 @@ BuildTabbedContent(settingsPanel, -76, -106, 560)
 settingsPanel:SetScript("OnShow", RefreshAll)
 settingsPanel.OnRefresh = RefreshAll
 
-local category
+local settingsCategory
 if Settings and Settings.RegisterCanvasLayoutCategory then
-    category = Settings.RegisterCanvasLayoutCategory(settingsPanel, PANEL_NAME)
-    Settings.RegisterAddOnCategory(category)
-elseif InterfaceOptions_AddCategory then
-    InterfaceOptions_AddCategory(settingsPanel)
+    settingsCategory = Settings.RegisterCanvasLayoutCategory(settingsPanel, PANEL_NAME)
+    Settings.RegisterAddOnCategory(settingsCategory)
 end
 
 local dialog = CreateFrame("Frame", "NickPrefixRemoverDialog", UIParent, "BasicFrameTemplateWithInset")
@@ -217,7 +218,30 @@ closeButton:SetPoint("BOTTOMRIGHT", -4, 0)
 
 dialog:Hide()
 
+-- Close the standalone window with Escape.
+tinsert(UISpecialFrames, dialog:GetName())
+
 function ADDON.OpenOptions()
     dialog:Show()
     dialog:Raise()
+end
+
+function ADDON.OpenSettings()
+    if settingsCategory and Settings and Settings.OpenToCategory then
+        Settings.OpenToCategory(settingsCategory:GetID())
+    else
+        ADDON.OpenOptions()
+    end
+end
+
+ADDON.RefreshOptions = RefreshAll
+
+-- WoW Forever addon compartment (minimap addon menu), declared in the TOC as
+-- AddonCompartmentFunc. Other clients ignore the TOC entry.
+function NickPrefixRemover_OnAddonCompartmentClick()
+    if dialog:IsShown() then
+        dialog:Hide()
+    else
+        ADDON.OpenOptions()
+    end
 end

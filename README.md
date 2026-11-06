@@ -16,8 +16,9 @@ Hello guild!
 
 ## Supported clients
 
-- World of Warcraft Classic Era (`11509`)
-- The Burning Crusade Classic (`20506`)
+- World of Warcraft Classic Era (`11508`, `11509`)
+- The Burning Crusade Classic Anniversary (`20506`)
+- World of Warcraft: Forever (`16001`)
 
 ## Installation
 
@@ -30,24 +31,26 @@ Hello guild!
 
 The addon can be configured in either of these places:
 
-- `/npr config` opens the standalone configuration window.
-- `Options -> AddOns -> Nick Prefix Remover` opens the Blizzard Settings entry.
+- `/npr config` opens the standalone configuration window. Escape closes it.
+- `/npr options` or `Options -> AddOns -> Nick Prefix Remover` opens the Blizzard Settings entry.
+- On WoW Forever, the minimap addon menu has a Nick Prefix Remover entry that opens or closes the standalone window.
 
-Both views change the same saved settings and apply changes immediately.
+Both views change the same saved settings and apply changes immediately. Slash-command changes also update an open configuration window.
 
 ## Slash commands
 
 | Command | Description |
 | --- | --- |
 | `/npr` or `/npr config` | Open the configuration window. |
+| `/npr options` or `/npr settings` | Open the Blizzard Settings page. |
 | `/npr on` | Enable prefix removal. |
 | `/npr off` | Disable prefix removal. |
 | `/npr status` | Show the active channels in chat. |
 | `/npr guild` | Toggle filtering in guild chat. |
 | `/npr officer` | Toggle filtering in officer chat. |
-| `/npr party` | Toggle filtering in party chat. |
-| `/npr raid` | Toggle filtering in raid chat. |
-| `/npr instance` | Toggle filtering in instance and battleground chat. |
+| `/npr party` | Toggle filtering in party chat, including the party leader's messages. |
+| `/npr raid` | Toggle filtering in raid chat, including the raid leader's messages. |
+| `/npr instance` | Toggle filtering in instance and battleground chat, including the instance leader's messages. |
 | `/npr channel` | Toggle filtering in custom channels. |
 | `/npr say` | Toggle filtering in Say. |
 | `/npr yell` | Toggle filtering in Yell. |
@@ -59,17 +62,30 @@ Both views change the same saved settings and apply changes immediately.
 
 ## Recognised prefixes
 
-The prefix must be at the beginning of a message and must be followed by a colon. The following forms are recognised:
+The prefix must be at the beginning of a message and must be followed by a colon and a space. Name2Chat writes `(Name): `; Incognito writes the name in `()`, `[]`, `{}` or `<>`. The following forms are recognised:
 
 ```text
 (krix): Hello!
 ( krix ) : Hello!
+(Krix Valami): Hello!
 [krix]: Hello!
 {krix}: Hello!
 <krix>: Hello!
 ```
 
-Whitespace around the nickname and colon is accepted.
+Whitespace around the nickname is accepted, and the nickname may contain spaces (for example WoW Forever first and last names). Incognito's class-coloured nicknames are recognised too.
+
+The following are not treated as nickname prefixes and stay visible:
+
+```text
+{star}: tank here        raid target markers, also (skull): or {rt8}:
+(1): first point         numbers
+[WTS]: Arcanite Bar      trade tags (WTS, WTB, WTT, LFM, LFG, LF, LFW)
+(krix):                  nothing after the colon
+(lol):D                  no space after the colon
+```
+
+Links in the brackets and labels longer than 50 bytes are not treated as nicknames either.
 
 ## Important limitation
 

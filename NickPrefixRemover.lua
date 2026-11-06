@@ -21,30 +21,54 @@ local defaults = {
     communities = false,
 }
 
+-- Each setting covers every event its chat type can arrive on. Messages sent by
+-- the party, raid or instance leader arrive on the *_LEADER events.
 local events = {
-    guild = "CHAT_MSG_GUILD",
-    officer = "CHAT_MSG_OFFICER",
-    party = "CHAT_MSG_PARTY",
-    raid = "CHAT_MSG_RAID",
-    instance = "CHAT_MSG_INSTANCE_CHAT",
-    channel = "CHAT_MSG_CHANNEL",
-    say = "CHAT_MSG_SAY",
-    yell = "CHAT_MSG_YELL",
-    whisper = "CHAT_MSG_WHISPER",
-    bnwhisper = "CHAT_MSG_BN_WHISPER",
-    communities = "CHAT_MSG_COMMUNITIES_CHANNEL",
+    guild = { "CHAT_MSG_GUILD" },
+    officer = { "CHAT_MSG_OFFICER" },
+    party = { "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER" },
+    raid = { "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER" },
+    instance = { "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER" },
+    channel = { "CHAT_MSG_CHANNEL" },
+    say = { "CHAT_MSG_SAY" },
+    yell = { "CHAT_MSG_YELL" },
+    whisper = { "CHAT_MSG_WHISPER" },
+    bnwhisper = { "CHAT_MSG_BN_WHISPER" },
+    communities = { "CHAT_MSG_COMMUNITIES_CHANNEL" },
 }
 
 local eventSettings = {}
-for setting, event in pairs(events) do
-    eventSettings[event] = setting
+for setting, settingEvents in pairs(events) do
+    for _, event in ipairs(settingEvents) do
+        eventSettings[event] = setting
+    end
 end
 
+-- Name2Chat writes "(Name): " and Incognito writes "<open>Name<close>: " with
+-- (), [], {} or <> brackets. The nickname may contain spaces (WoW Forever
+-- first and last names) but no brackets or colons; ": " must follow it and
+-- the remaining message must not be empty.
+local NICKNAME = "([^%(%)%[%]{}<>:]+)"
+local REST = "%s*:%s+(%S.*)$"
+
 local nicknamePatterns = {
-    "^%s*%((.-)%)%s*:%s*(.*)$",
-    "^%s*%[(.-)%]%s*:%s*(.*)$",
-    "^%s*%{(.-)%}%s*:%s*(.*)$",
-    "^%s*<(.-)>%s*:%s*(.*)$",
+    "^%s*%(" .. NICKNAME .. "%)" .. REST,
+    "^%s*%[" .. NICKNAME .. "%]" .. REST,
+    "^%s*{" .. NICKNAME .. "}" .. REST,
+    "^%s*<" .. NICKNAME .. ">" .. REST,
+}
+
+local MAX_NICKNAME_BYTES = 50
+
+-- Common trade-chat tags that look like a bracketed nickname.
+local tradeTags = {
+    wts = true,
+    wtb = true,
+    wtt = true,
+    lfm = true,
+    lfg = true,
+    lf = true,
+    lfw = true,
 }
 
 local nicknamePatternsByOpeningCharacter = {
@@ -73,13 +97,44 @@ local function GetDB()
     return NickPrefixRemoverDB
 end
 
+local function IsNickname(rawNickname)
+    -- Hyperlinks, textures and Battle.net name escapes are never nicknames.
+    if rawNickname:find("|[HhTtKk]") then
+        return false
+    end
+
+    -- Incognito can colour the nickname with the sender's class colour.
+    local nickname = rawNickname:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    nickname = nickname:match("^%s*(.-)%s*$")
+
+    if nickname == "" or #nickname > MAX_NICKNAME_BYTES then
+        return false
+    end
+
+    -- Numbered lists such as "(1): first point".
+    if nickname:find("^%d+$") then
+        return false
+    end
+
+    local lowerNickname = nickname:lower()
+
+    -- Raid target markers such as "{star}: tank here" or "(skull): kill first",
+    -- including their localised names.
+    if ICON_TAG_LIST and ICON_TAG_LIST[lowerNickname] then
+        return false
+    end
+
+    if tradeTags[lowerNickname] then
+        return false
+    end
+
+    return true
+end
+
 local function MatchNicknamePrefix(msg, pattern)
     local nickname, rest = msg:match(pattern)
-    if nickname then
-        nickname = nickname:match("^%s*(.-)%s*$")
-        if nickname ~= "" then
-            return rest, true
-        end
+    if nickname and IsNickname(nickname) then
+        return rest, true
     end
 
     return msg, false
@@ -122,17 +177,48 @@ local function ChatFilter(self, event, msg, author, ...)
         return
     end
 
+    -- WoW Forever can deliver secret chat values; they cannot be inspected.
+    if issecretvalue and issecretvalue(msg) then
+        return
+    end
+
     local newMsg, changed = StripNicknamePrefix(msg, db.fastPrefixPrecheck)
     if changed then
         return false, newMsg, author, ...
     end
 end
 
+-- Classic Era 1.15.9, TBC Anniversary and WoW Forever provide
+-- ChatFrameUtil.AddMessageEventFilter and keep ChatFrame_AddMessageEventFilter
+-- only as a deprecated fallback. Classic Era 1.15.8 already has a ChatFrameUtil
+-- table without this function, so check the function, not the table.
+local function AddMessageEventFilter(event, filter)
+    if ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter then
+        ChatFrameUtil.AddMessageEventFilter(event, filter)
+        return true
+    end
+
+    if ChatFrame_AddMessageEventFilter then
+        ChatFrame_AddMessageEventFilter(event, filter)
+        return true
+    end
+
+    return false
+end
+
+local missingFilterApiReported = false
+
 local function ApplyFilters()
-    for _, event in pairs(events) do
-        if not registered[event] then
-            ChatFrame_AddMessageEventFilter(event, ChatFilter)
-            registered[event] = true
+    for _, settingEvents in pairs(events) do
+        for _, event in ipairs(settingEvents) do
+            if not registered[event] then
+                if AddMessageEventFilter(event, ChatFilter) then
+                    registered[event] = true
+                elseif not missingFilterApiReported then
+                    missingFilterApiReported = true
+                    DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99Nick Prefix Remover|r: chat filter API not available on this client.")
+                end
+            end
         end
     end
 end
@@ -143,6 +229,11 @@ API.ApplyFilters = ApplyFilters
 local function Set(key, value)
     GetDB()[key] = value and true or false
     ApplyFilters()
+
+    -- Keep an open options window in sync with slash-command changes.
+    if API.RefreshOptions then
+        API.RefreshOptions()
+    end
 end
 
 local function Print(msg)
@@ -178,6 +269,13 @@ SlashCmdList.NICKPREFIXREMOVER = function(msg)
     if msg == "" or msg == "config" then
         if API.OpenOptions then
             API.OpenOptions()
+        end
+        return
+    end
+
+    if msg == "options" or msg == "settings" then
+        if API.OpenSettings then
+            API.OpenSettings()
         end
         return
     end
@@ -220,7 +318,7 @@ SlashCmdList.NICKPREFIXREMOVER = function(msg)
         return
     end
 
-    Print("Usage: /npr config | on | off | status | guild | officer | party | raid | instance | channel | say | yell | whisper | bnwhisper | communities")
+    Print("Usage: /npr config | options | on | off | status | guild | officer | party | raid | instance | channel | say | yell | whisper | bnwhisper | communities")
 end
 
 local frame = CreateFrame("Frame")

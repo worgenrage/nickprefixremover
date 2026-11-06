@@ -2,6 +2,46 @@
 
 All notable changes to Nick Prefix Remover are documented in this file.
 
+## 1.1.0 - 2026-11-06
+
+### Added
+
+- WoW Forever (`16001`) and Classic Era 1.15.8 (`11508`) in the TOC interface list.
+- `/npr options` (alias `/npr settings`) opens the addon's page in the Blizzard Settings window.
+- The standalone configuration window closes with Escape.
+- WoW Forever addon compartment entry: clicking Nick Prefix Remover in the minimap addon menu
+  opens or closes the configuration window.
+- Addon icon (`NickPrefixRemover-Icon.tga`, 64×64) shown in the addon list and the addon
+  compartment, set with `IconTexture` in the TOC.
+- Filtering of messages from party, raid and instance leaders (`CHAT_MSG_PARTY_LEADER`,
+  `CHAT_MSG_RAID_LEADER`, `CHAT_MSG_INSTANCE_CHAT_LEADER`) under the existing Party, Raid and
+  Instance settings. These messages previously kept their nickname prefix.
+
+### Changed
+
+- Chat filters are registered with `ChatFrameUtil.AddMessageEventFilter` where it exists
+  (Classic Era 1.15.9, TBC Anniversary, WoW Forever), with `ChatFrame_AddMessageEventFilter`
+  as the fallback for Classic Era 1.15.8. The addon no longer depends on the
+  `loadDeprecationFallbacks` setting.
+- The options window uses `UICheckButtonTemplate` instead of the deprecated
+  `InterfaceOptionsCheckButtonTemplate`.
+- Removed the unused `InterfaceOptions_AddCategory` fallback; every supported client has the
+  Settings API.
+- Stricter nickname recognition: the nickname may not contain brackets or a colon, a space
+  must follow the colon, and the rest of the message may not be empty. Incognito's
+  class-coloured nicknames are still recognised.
+- Secret chat values on WoW Forever are left untouched.
+
+### Fixed
+
+- Raid target markers such as `{star}: tank here` or `(skull): kill first` are no longer
+  removed as nicknames.
+- Numbered lines such as `(1): first point`, trade tags such as `[WTS]: …`, links in brackets,
+  and labels longer than 50 bytes are no longer removed.
+- A message consisting only of a prefix, such as `(krix):`, no longer becomes an empty line.
+- Checkboxes in an open configuration window now update when a setting is changed with a
+  slash command.
+
 ## 1.0.2 - 2026-09-05
 
 ### Added
